@@ -122,15 +122,15 @@ Question: {query}"""
     return message.content
 
 
-# Test it
-questions = [
-    "How do I keep my API key safe?",
-    "What is the current date and time?",
-    "What's the capital of France?"
-]
+if __name__ == "__main__":
+    questions = [
+        "How do I keep my API key safe?",
+        "What is the current date and time?",
+        "What's the capital of France?"
+    ]
 
-for q in questions:
-    answer = ask(q)
-    print(f"\nQuestion: {q}")
-    print(f"Answer: {answer}")
-    print("-" * 50)
+    for q in questions:
+        answer = ask(q)
+        print(f"\nQuestion: {q}")
+        print(f"Answer: {answer}")
+        print("-" * 50)

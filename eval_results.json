@@ -1,0 +1,32 @@
+[
+  {
+    "question": "What does a virtual environment do?",
+    "answer": "A virtual environment creates an isolated Python environment for a specific project. It gives that project its own copy of the Python interpreter and its own independent set of installed packages, so packages are installed locally to the project instead of system\u2011wide. This isolation prevents conflicts between projects that need different versions of the same package.",
+    "verdict": "YES",
+    "correct": true
+  },
+  {
+    "question": "How do you create a requirements.txt file?",
+    "answer": "You generate it by running\u202fpip\u202fto list the currently installed packages and redirecting the output into the file, e.g.:\n\n```bash\npip freeze > requirements.txt\n```\n\nThis creates a **requirements.txt** containing each package and its exact version, which can later be used with\u202f`pip install -r requirements.txt`\u202fto recreate the same environment.",
+    "verdict": "YES",
+    "correct": true
+  },
+  {
+    "question": "What does GitHub's secret scanning do?",
+    "answer": "GitHub\u2019s secret scanning automatically looks for patterns that resemble API keys, passwords, or other secrets in code when it\u2019s pushed, and blocks the push to prevent those sensitive credentials from being inadvertently exposed.",
+    "verdict": "YES",
+    "correct": true
+  },
+  {
+    "question": "What is git commit used for?",
+    "answer": "`git commit` records a snapshot of the changes that have been staged (with\u202f`git add`). It saves that snapshot in the repository\u2019s history along with a descriptive commit message, creating a new commit that remains local until it is pushed to a remote repository.",
+    "verdict": "YES",
+    "correct": true
+  },
+  {
+    "question": "Who is the president of Mars?",
+    "answer": "I\u2019m sorry, but I don\u2019t know the answer to that question. I\u2019ve logged it for follow\u2011up.",
+    "verdict": "YES",
+    "correct": true
+  }
+]
