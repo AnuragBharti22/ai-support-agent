@@ -12,12 +12,19 @@ chroma_client = chromadb.PersistentClient(path="./chroma_db")
 collection = chroma_client.get_or_create_collection(name="docs")
 
 
-# --- Tool definition: a real Python function ---
+# --- Tool 1: get current date/time ---
 def get_current_datetime():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-# --- Tool schema: tells the LLM this tool exists and how to use it ---
+# --- Tool 2: log a question we couldn't answer ---
+def log_unanswered_question(question):
+    with open("unanswered_log.txt", "a", encoding="utf-8") as f:
+        f.write(f"{datetime.now()}: {question}\n")
+    return "Question has been logged for follow-up."
+
+
+# --- Tool schemas: tell the LLM these tools exist and how to use them ---
 tools = [
     {
         "type": "function",
@@ -28,6 +35,23 @@ tools = [
                 "type": "object",
                 "properties": {},
                 "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "log_unanswered_question",
+            "description": "Log a question that could not be answered from the available context, so it can be followed up on later.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "The original question that could not be answered."
+                    }
+                },
+                "required": ["question"]
             }
         }
     }
@@ -46,9 +70,8 @@ def ask(query):
         {
             "role": "user",
             "content": f"""Answer the question using ONLY the context below.
-Only use the get_current_datetime tool if the question is specifically asking about the current date or time.
-If the answer isn't in the context and doesn't need the datetime tool, say "I don't know based on the provided documents."
-
+Use the get_current_datetime tool only if the question is specifically asking about the current date or time.
+If the answer isn't in the context and doesn't need the datetime tool, use the log_unanswered_question tool to log it, then tell the user you don't know but have logged it for follow-up.
 
 Context:
 {context}
@@ -69,10 +92,17 @@ Question: {query}"""
     # Step 2: Check if the model wants to call a tool
     if message.tool_calls:
         tool_call = message.tool_calls[0]
-        print(f"[Agent decided to call tool: {tool_call.function.name}]")
+        tool_name = tool_call.function.name
+        print(f"[Agent decided to call tool: {tool_name}]")
 
-        # Step 3: Actually run the real Python function
-        result = get_current_datetime()
+        # Step 3: Run the correct real Python function based on tool name
+        if tool_name == "get_current_datetime":
+            result = get_current_datetime()
+        elif tool_name == "log_unanswered_question":
+            args = json.loads(tool_call.function.arguments)
+            result = log_unanswered_question(args["question"])
+        else:
+            result = "Unknown tool."
 
         # Step 4: Send the tool's result back to the model for a final answer
         messages.append(message)
@@ -92,11 +122,11 @@ Question: {query}"""
     return message.content
 
 
-## Test it
+# Test it
 questions = [
-    "How do I keep my API key safe?",       # should use context, no tool
-    "What is the current date and time?",     # should use tool
-    "What's the capital of France?"           # should say "I don't know"
+    "How do I keep my API key safe?",
+    "What is the current date and time?",
+    "What's the capital of France?"
 ]
 
 for q in questions:
