@@ -1,0 +1,35 @@
+Python Virtual Environments
+
+A virtual environment is an isolated Python environment that allows packages to be installed for use by a particular project, rather than being installed system-wide. This solves the problem where different projects require different versions of the same package. Each virtual environment has its own Python binary and can have its own independent set of installed packages.
+
+To create a virtual environment, use the built-in venv module: python -m venv myenv. This creates a directory containing a copy of the Python interpreter, the standard library, and various supporting files. To activate the environment on Windows, run myenv\Scripts\activate. On macOS and Linux, run source myenv/bin/activate.
+
+Once activated, any package installed using pip install will be installed into the virtual environment, not the global Python installation. This is why professional Python projects almost always include a virtual environment step in their setup instructions.
+
+Python Package Management with pip
+
+pip is the standard package manager for Python, used to install and manage software packages from the Python Package Index, commonly known as PyPI. Running pip install package-name downloads and installs the specified package along with any of its dependencies.
+
+A common practice is to maintain a requirements.txt file listing all packages a project depends on, along with their versions. This file can be generated with pip freeze > requirements.txt and later used to recreate the same environment elsewhere with pip install -r requirements.txt. This ensures that anyone running the project has the exact same package versions, avoiding compatibility issues.
+
+Environment Variables and Configuration
+
+Applications often need configuration values that should not be hardcoded into source code, such as API keys, database passwords, or environment-specific settings. Environment variables provide a way to pass this configuration into an application without modifying the code itself.
+
+In Python, the os.getenv function can retrieve environment variables set in the operating system. However, manually setting environment variables for every project can be tedious during development. The python-dotenv library solves this by allowing developers to store variables in a file named .env and load them automatically using the load_dotenv function.
+
+It is considered a critical security practice to never commit a .env file to version control systems like Git, since it often contains secrets. This is typically enforced by adding .env to a .gitignore file, which tells Git to ignore that file entirely when tracking changes.
+
+Version Control with Git
+
+Git is a distributed version control system that tracks changes to files over time, allowing multiple people to collaborate on a project and revert to previous versions if needed. A Git repository is initialized using git init, which creates a hidden .git folder to store the project's history.
+
+Changes to files must be staged before they can be recorded. The command git add stages changes, and git commit -m "message" saves a snapshot of the staged changes along with a descriptive message. These commits remain local until they are pushed to a remote repository, such as one hosted on GitHub, using git push.
+
+GitHub also enforces security protections such as secret scanning, which automatically detects patterns resembling API keys or passwords in code being pushed, and blocks the push to prevent accidental exposure of sensitive credentials.
+
+Application Programming Interfaces
+
+An API, or Application Programming Interface, is a set of rules that allows different software applications to communicate with each other. Most modern APIs, including those provided by AI model providers, follow the REST architectural style and exchange data in JSON format over HTTP.
+
+To use most APIs, a developer must first obtain an API key, which acts as a unique credential identifying who is making the request. This key is typically included in the header of every request sent to the API's server. Rate limits are commonly enforced by API providers to prevent abuse, restricting how many requests a single key can make within a given time period.
