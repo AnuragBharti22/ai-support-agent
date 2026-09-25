@@ -38,11 +38,10 @@ Return answer via FastAPI endpoint or Streamlit chat UI
 
 ## Knowledge base
 
-A real-world Wikipedia article on UPI (Unified Payments Interface) — 168,608 characters, chunked into 199 segments using fixed-size character windows with overlap. Not hand-crafted sample data.
+A real-world Wikipedia article on UPI (Unified Payments Interface) — 168,608 characters, chunked into 199 segments using fixed-size character windows with overlap. Not hand-crafted sample data. The PDF is not included in this repo (see setup steps below).
 
 ## How to run it
 
-\bash
 # Clone and set up
 git clone https://github.com/AnuragBharti22/ai-support-agent.git
 cd ai-support-agent
@@ -52,6 +51,9 @@ pip install -r requirements.txt
 
 # Add your own Groq API key
 echo "GROQ_API_KEY=your_key_here" > .env
+
+# Get a knowledge base PDF (not included in repo)
+# e.g., export the Wikipedia UPI article as PDF and save as knowledge.pdf in the project root
 
 # Build the vector index from knowledge.pdf
 python build_index_pdf.py
@@ -65,7 +67,6 @@ uvicorn main:app --reload
 
 # Or run the chat UI
 streamlit run app.py
-\
 
 ## Evaluation results
 
