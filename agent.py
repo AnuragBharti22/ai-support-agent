@@ -1,4 +1,5 @@
 import chromadb
+from chromadb.utils import embedding_functions
 from groq import Groq
 from dotenv import load_dotenv
 import os
@@ -9,7 +10,15 @@ load_dotenv()
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
-collection = chroma_client.get_or_create_collection(name="docs")
+
+embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+    model_name="all-mpnet-base-v2"
+)
+
+collection = chroma_client.get_or_create_collection(
+    name="pdf_docs",
+    embedding_function=embedding_fn
+)
 
 
 # --- Tool 1: get current date/time ---
@@ -24,7 +33,7 @@ def log_unanswered_question(question):
     return "Question has been logged for follow-up."
 
 
-# --- Tool schemas: tell the LLM these tools exist and how to use them ---
+# --- Tool schemas ---
 tools = [
     {
         "type": "function",
@@ -59,7 +68,7 @@ tools = [
 
 
 def retrieve_context(query):
-    results = collection.query(query_texts=[query], n_results=3)
+    results = collection.query(query_texts=[query], n_results=8)
     return "\n\n".join(results["documents"][0])
 
 
@@ -80,7 +89,6 @@ Question: {query}"""
         }
     ]
 
-    # Step 1: Let the model decide if it needs a tool
     response = groq_client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=messages,
@@ -89,13 +97,11 @@ Question: {query}"""
 
     message = response.choices[0].message
 
-    # Step 2: Check if the model wants to call a tool
     if message.tool_calls:
         tool_call = message.tool_calls[0]
         tool_name = tool_call.function.name
         print(f"[Agent decided to call tool: {tool_name}]")
 
-        # Step 3: Run the correct real Python function based on tool name
         if tool_name == "get_current_datetime":
             result = get_current_datetime()
         elif tool_name == "log_unanswered_question":
@@ -104,7 +110,6 @@ Question: {query}"""
         else:
             result = "Unknown tool."
 
-        # Step 4: Send the tool's result back to the model for a final answer
         messages.append(message)
         messages.append({
             "role": "tool",
@@ -118,15 +123,14 @@ Question: {query}"""
         )
         return final_response.choices[0].message.content
 
-    # No tool needed — just return the direct answer
     return message.content
 
 
 if __name__ == "__main__":
     questions = [
-        "How do I keep my API key safe?",
-        "What is the current date and time?",
-        "What's the capital of France?"
+        "What is UPI?",
+        "Who developed UPI?",
+        "What is the current date and time?"
     ]
 
     for q in questions:
