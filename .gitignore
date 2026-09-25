@@ -5,3 +5,4 @@ chroma_db/
 output.txt
 unanswered_log.txt
 eval_results.json
+knowledge.pdf
