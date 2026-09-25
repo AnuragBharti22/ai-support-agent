@@ -1,3 +1,7 @@
 venv/
 .env
 __pycache__/
+chroma_db/
+output.txt
+unanswered_log.txt
+eval_results.json
