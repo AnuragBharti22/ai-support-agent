@@ -4,23 +4,23 @@ from agent import ask
 # Test set: question + what a correct answer should contain
 test_cases = [
     {
-        "question": "What does a virtual environment do?",
-        "expected_topic": "isolates project dependencies so packages don't conflict between projects"
+        "question": "What is UPI?",
+        "expected_topic": "an instant payment system developed by NPCI for inter-bank transactions"
     },
     {
-        "question": "How do you create a requirements.txt file?",
-        "expected_topic": "pip freeze > requirements.txt"
+        "question": "Who developed UPI?",
+        "expected_topic": "National Payments Corporation of India (NPCI)"
     },
     {
-        "question": "What does GitHub's secret scanning do?",
-        "expected_topic": "detects patterns resembling API keys or passwords and blocks the push"
+        "question": "When was UPI launched?",
+        "expected_topic": "11 April 2016"
     },
     {
-        "question": "What is git commit used for?",
-        "expected_topic": "saves a snapshot of staged changes with a message"
+        "question": "What organization regulates UPI?",
+        "expected_topic": "Reserve Bank of India (RBI)"
     },
     {
-        "question": "Who is the president of Mars?",
+        "question": "What is the capital of Italy?",
         "expected_topic": "NOT_ANSWERABLE"
     }
 ]
