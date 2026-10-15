@@ -1,93 +1,127 @@
-# AI Support Agent — RAG + Agentic AI
+# AI Support Agent — RAG + Tool-Calling Assistant
 
-A support assistant that answers questions using retrieval-augmented generation (RAG) over a real-world knowledge base, and autonomously decides when to call external tools instead of just answering from text — including logging questions it can't answer for human follow-up.
+A general-purpose AI assistant built from scratch with Python. It answers general questions from the model's own knowledge, searches **your documents** (RAG) when a question is covered by them, and looks up **live news and web results** for current events. The agent decides for itself which tool to use for each question.
 
 ## What it does
 
-- Retrieves relevant context from a vector database before answering (RAG)
-- Strictly grounds answers in retrieved context — refuses to answer from general knowledge if the answer isn't in the documents
-- Autonomously decides whether to call a tool based on the question:
-  - `get_current_datetime` — for live date/time queries
-  - `log_unanswered_question` — logs unanswerable questions to a file for follow-up instead of hallucinating an answer
-- Exposes everything through a FastAPI web API and a Streamlit chat UI
-- Includes an automated evaluation suite using LLM-as-judge scoring
+- **Answers general questions directly** (facts, explanations, coding, math) without unnecessary tool calls
+- **Searches your uploaded documents** (PDF or text) using vector search and cites the source file
+- **Searches news and the web** for current information, with dated results and source URLs
+- **Remembers the conversation**, so follow-up questions like "when was it launched?" work
+- **Runs three ways**: terminal, FastAPI web API, or a Streamlit chat UI
 
-## Architecture
+## How it works
 
-User question
-&nbsp;&nbsp;&nbsp;&nbsp;↓
-Retrieve top-8 relevant chunks (ChromaDB + sentence-transformers embeddings)
-&nbsp;&nbsp;&nbsp;&nbsp;↓
-Build prompt: context + question + tool instructions
-&nbsp;&nbsp;&nbsp;&nbsp;↓
-LLM (Groq / openai-oss-120b) decides: answer directly, or call a tool?
-&nbsp;&nbsp;&nbsp;&nbsp;↓
-If tool needed → run real Python function → feed result back to LLM → final answer
-&nbsp;&nbsp;&nbsp;&nbsp;↓
-Return answer via FastAPI endpoint or Streamlit chat UI
+```
+User question (+ earlier chat history)
+        |
+        v
+LLM (Groq, openai/gpt-oss-120b) decides what to do
+        |
+        +--> answer directly (general knowledge)
+        +--> search_documents  -> vector search over your files (ChromaDB)
+        +--> news_search       -> dated news results, newest first
+        +--> web_search        -> general web results
+        +--> get_current_datetime
+        |
+        v
+Tool results go back to the LLM -> final answer (with sources)
+```
+
+The agent runs in a loop: it can call a tool, read the result, and call another before answering. Limits are enforced in code, not just in the prompt: at most 4 tool rounds and 3 searches per question.
+
+## Tools
+
+| Tool | When the agent uses it |
+|---|---|
+| `search_documents` | Question may be covered by the uploaded documents |
+| `news_search` | Latest news, "this week", recent events (results sorted newest first) |
+| `web_search` | Other current facts, prices, verification |
+| `get_current_datetime` | Exact current time |
 
 ## Tech stack
 
 - **LLM**: Groq API (`openai/gpt-oss-120b`)
-- **Vector DB**: ChromaDB (local, persistent)
+- **Vector database**: ChromaDB (local, persistent)
 - **Embeddings**: sentence-transformers (`all-mpnet-base-v2`)
-- **PDF ingestion**: pypdf
+- **Document ingestion**: pypdf, fixed-size chunking with overlap
+- **Search**: `ddgs` (text and news search, no API key needed)
 - **API**: FastAPI + Uvicorn
 - **UI**: Streamlit
-- **Evaluation**: custom LLM-as-judge scoring script
 
-## Knowledge base
+## Project structure
 
-A real-world Wikipedia article on UPI (Unified Payments Interface) — 168,608 characters, chunked into 199 segments using fixed-size character windows with overlap. Not hand-crafted sample data. The PDF is not included in this repo (see setup steps below).
+```
+agent.py                  # the agent: tools, system prompt, tool loop
+build_knowledge_base.py   # reads documents/ and builds the vector index
+check_index.py            # shows what is stored in the vector database
+evaluate.py               # automated behavior tests
+app.py                    # Streamlit chat UI
+main.py                   # FastAPI web API
+documents/                # your PDFs / text files (not included in this repo)
+```
 
 ## How to run it
 
-# Clone and set up
+```bash
+# 1. Clone and set up
 git clone https://github.com/AnuragBharti22/ai-support-agent.git
 cd ai-support-agent
 python -m venv venv
-venv\Scripts\activate       # Windows
+venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 
-# Add your own Groq API key
-echo "GROQ_API_KEY=your_key_here" > .env
+# 2. Add your Groq API key (free at console.groq.com)
+echo GROQ_API_KEY=your_key_here > .env
 
-# Get a knowledge base PDF (not included in repo)
-# e.g., export the Wikipedia UPI article as PDF and save as knowledge.pdf in the project root
+# 3. Add documents: create a documents/ folder and put PDF or .txt files in it
+#    (the demo used the Wikipedia article on UPI saved as documents/upi.pdf)
 
-# Build the vector index from knowledge.pdf
-python build_index_pdf.py
+# 4. Build the vector index (takes a few minutes the first time)
+python build_knowledge_base.py
 
-# Run the agent directly in the terminal
-python agent.py
+# 5. Run it
+python agent.py                # quick terminal test
+streamlit run app.py           # chat UI
+uvicorn main:app --reload      # web API, docs at http://127.0.0.1:8000/docs
+```
 
-# Or run it as a web API
-uvicorn main:app --reload
-# then visit http://127.0.0.1:8000/docs
+Adding a new document later is just: drop the file in `documents/` and re-run `python build_knowledge_base.py`.
 
-# Or run the chat UI
-streamlit run app.py
+## Evaluation
 
-## Evaluation results
+`evaluate.py` runs 8 behavior tests and checks two things for each: **did the agent pick the right tool**, and **does the answer contain the expected fact**. It doesn't use an LLM judge, so results are fast and repeatable.
 
-Ran an automated 5-question test suite using an independent LLM-as-judge to score whether each answer was faithful to the retrieved context (or correctly declined to answer when it shouldn't).
+| Test group | What it checks |
+|---|---|
+| 3 document questions | Uses `search_documents` and returns the correct fact from the PDF |
+| 2 general-knowledge questions | Answers directly with **no** tool calls |
+| 1 time question | Uses the datetime tool |
+| 1 news question | Uses a search tool and includes source links |
+| 1 follow-up question | Resolves "it" correctly using chat history |
 
-Tested against the real-world UPI knowledge base described above — not sample data written to make the demo work.
+**Latest run: 8/8.** The first run scored 5/8, and the failures were useful: the agent sometimes searched the web for facts that were in the documents (fixed by tightening the routing instructions), a burst of requests hit the API's tokens-per-minute limit and crashed the agent (fixed with retry and backoff), and one test was itself wrong. Model behavior varies slightly between runs, and 8 tests is a small suite.
 
-**Score: 5/5 (100%)**
+## Engineering notes: problems found and fixed
 
-Test cases covered: factual questions requiring retrieval, a tool-triggering question, and an out-of-scope question that should be correctly declined and logged.
+- **Retrieval missed a fact that was in the data.** With the default embedding model and small chunks, "Who developed UPI?" did not surface the correct chunk (similarity distance around 0.9-1.0). Inspecting the raw retrieved chunks showed the data was fine and retrieval was the problem. Switching to `all-mpnet-base-v2`, larger chunks (1000 characters, 150 overlap) and more retrieved results brought the distance to about 0.45 and fixed it.
+- **The model sometimes produced malformed tool calls**, which crashed the API request. The agent now catches this, asks the model to answer from what it already has, and caps tool rounds so it can never loop forever.
+- **Web search returned stale or wrong-topic results.** The news query "UPI" matched United Press International, and plain web search ranked old articles above new ones. Fixes: a dedicated news tool that returns dated results newest first, today's date in the system prompt, and instructions to expand acronyms and to check whether "proposed" or "possible" items have since been decided.
+- **API rate limits**: the free tier caps tokens per minute, so LLM calls now retry with backoff.
 
 ## Known limitations
 
-- Grounding is generally strong but not 100% consistent — the model occasionally adds general knowledge beyond the retrieved context despite explicit "use only context" instructions. This is a known limitation of smaller/faster models and could be improved with a stricter system prompt or a larger judge model for validation.
-- Initial retrieval testing on the real-world UPI dataset revealed that the default lightweight embedding model (`all-MiniLM-L6-v2`) struggled with short factual queries like "Who developed X?" — the correct chunk existed but didn't surface in the top-5 matches (similarity distance ~0.9-1.0). Diagnosed this by directly inspecting retrieved chunks and their distances, then fixed it by switching to a stronger embedding model (`all-mpnet-base-v2`) and increasing retrieved chunks from 3 to 8 — improving match quality significantly (distance ~0.45).
-- Chunking uses fixed-size character windows with overlap, which is more robust than paragraph splitting for messy real-world PDFs, but still isn't as accurate as semantic or recursive chunking — a fact can still occasionally be split awkwardly across chunk boundaries.
-- Single-document knowledge base for this demo — architecture supports scaling to many documents without changes.
+- **Web answers are only as reliable as their sources.** The agent can repeat a weak or misleading source with the same confidence as a good one (during testing it once reported an RBI announcement that I could not find in any reputable source). Search results are snippets, not full articles, so details should be verified against primary sources.
+- **Model behavior is not fully deterministic.** The same question can be routed slightly differently between runs.
+- **Chunking is fixed-size**, which can split a fact across chunk boundaries; semantic or recursive chunking would be more accurate.
+- **Free-tier limits**: Groq's free tier restricts tokens per minute, and the search library depends on public search endpoints that can throttle.
+- The evaluation suite is small, and the news test checks that a search happened and links were returned, not that the story is correct.
+- No user authentication, streaming responses, or per-passage citations yet.
 
-## What I'd improve with more time
+## What I'd improve next
 
-- Hybrid search (keyword + semantic) for more robust retrieval
-- Reranking retrieved chunks before passing to the LLM
-- Streaming responses for better UX
-- Multi-document support with source citation in answers
+- Hybrid search (keyword + semantic) and reranking of retrieved chunks
+- Source-quality filtering for web results, and fetching full pages instead of snippets
+- Streaming responses in the chat UI
+- Passage-level citations (which part of which document)
+- A larger evaluation set, including adversarial and multi-document questions
